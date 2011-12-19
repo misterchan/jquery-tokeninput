@@ -1,6 +1,6 @@
 /*
  * jQuery Plugin: Tokenizing Autocomplete Text Entry
- * Version 1.6.0
+ * Version 1.6.0  (Modifications by Benny Chan to support adding unknown tokens)
  *
  * Copyright (c) 2009 James Smith (http://loopj.com)
  * Licensed jointly under the GPL and MIT licenses,
@@ -276,8 +276,20 @@ $.TokenList = function (input, url_or_data, settings) {
                 case KEY.NUMPAD_ENTER:
                 case KEY.COMMA:
                   if(selected_dropdown_item) {
-                    add_token($(selected_dropdown_item).data("tokeninput"));
+                    var item = $(selected_dropdown_item).data("tokeninput");
+                    if(typeof item == 'undefined' && input_box.val().length > 0) {
+                      item = {id: generateNewId(), name: input_box.val()};
+                      settings.local_data.push(item);
+                    }
+                    add_token(item);
                     hidden_input.change();
+                    return false;
+                  } else if($(this).val().length) {
+                    if(input_box.val().length > 0) {
+                      item = {id: generateNewId(), name: input_box.val()};
+                      add_token(item);
+                      settings.local_data.push(item);
+                    }    
                     return false;
                   }
                   break;
@@ -437,6 +449,25 @@ $.TokenList = function (input, url_or_data, settings) {
     //
     // Private functions
     //
+
+    function generateNewId() {
+      var new_id;    
+      do {
+        new_id = Math.floor(Math.random() * 10000) * -1;
+      } while(idExists(new_id));
+      return new_id;
+    }
+
+    function idExists(the_id) {
+      var ret = false;
+      $.each(settings.local_data, function (index, val) {
+        if(val[settings.tokenValue] == the_id) {
+          ret = true;
+          return false; //same same break;
+        }
+      });
+      return ret;
+    }
 
     // Toggles the widget between enabled and disabled state, or according
     // to the [disable] parameter.
@@ -852,7 +883,9 @@ $.TokenList = function (input, url_or_data, settings) {
                 if($.isFunction(settings.onResult)) {
                     results = settings.onResult.call(hidden_input, results);
                 }
-                cache.add(cache_key, results);
+                // don't cache now that we are adding new tokens
+                // cache.add(cache_key, results);
+                
                 populate_dropdown(query, results);
             }
         }
